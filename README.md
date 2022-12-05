@@ -1,5 +1,5 @@
-Originally Qengineering
-mod to use liboscpp to send UDP OSC messages
+Forked from [Qengineering TensorFlow_Lite_Pose C++](https://github.com/Qengineering/TensorFlow_Lite_Pose_RPi_64-bits)
+modified to use liboscpp to send UDP OSC messages
 
 # TensorFlow_Lite_Pose_RPi_64-bits
 ![output image]( https://qengineering.eu/images/Girl_9_4.png )<br/>
