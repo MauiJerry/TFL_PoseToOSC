@@ -2,6 +2,7 @@
 // display local and send via UDP
 // from QEngineering build of Buster64
 // build Env = Code::Blocks TFL-OSC.cbp
+// added sendOSCFrameInfo to send w, h, etc info 
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -117,7 +118,7 @@ int osc_msg_send(osc::message msg)
   return ret;
 }
 
-void sendPoseOscMsg(Point* points, Point* locations, float *confidence)
+void sendOSCLandmarks(Point* points, Point* locations, float *confidence)
 {
     int i;
     // clear udp_buffer
@@ -225,7 +226,7 @@ void detect_from_video(Mat &src)
         Loc[i].x=(x*src.cols)/8 + offsetShape[j+17];
     }
 
-    sendPoseOscMsg(Pnt, Loc, Cnf);
+    sendOSCLandmarks(Pnt, Loc, Cnf);
 
     for(i=0;i<17;i++){
         if(Cnf[i]>confidence_threshold){
@@ -258,6 +259,26 @@ void detect_from_video(Mat &src)
         if(Cnf[12]>confidence_threshold) line(src,Loc[14],Loc[12],Scalar( 255, 255, 0 ),2);
         if(Cnf[16]>confidence_threshold) line(src,Loc[14],Loc[16],Scalar( 255, 255, 0 ),2);
     }
+}
+
+void sendOSCFrameInfo(int width, int height, int channels)
+{
+    sprintf(udp_buffer,"/image-width");
+        osc::message msgW = osc::message(udp_buffer);
+        msgW << udp_buffer << width;
+        osc_msg_send(msgW);
+
+    sprintf(udp_buffer,"/image-height");
+        osc::message msgH = osc::message(udp_buffer);
+        msgH << udp_buffer << height;
+        osc_msg_send(msgH);
+
+    sprintf(udp_buffer,"/numChannels");
+        osc::message msgC = osc::message(udp_buffer);
+        msgC << udp_buffer << channels;
+        osc_msg_send(msgC);
+
+
 }
 //-----------------------------------------------------------------------------------------------------------------------
 int main(int argc,char ** argv)
@@ -304,6 +325,8 @@ int main(int argc,char ** argv)
     cout << "width    : "<< model_width << endl;
     cout << "channels : "<< model_channels << endl;
 
+    sendOSCFrameInfo(model_width, model_height, model_channels);
+
     //VideoCapture cap("Dance.mp4");
     VideoCapture cap(0);
     if (!cap.isOpened()) {
@@ -321,6 +344,7 @@ int main(int argc,char ** argv)
         }
 
         //frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE);
+        sendOSCFrameInfo(model_width, model_height, model_channels);
 
         // most of the magic happens in this function
         detect_from_video(frame);
