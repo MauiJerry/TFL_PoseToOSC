@@ -77,6 +77,7 @@ int model_height;
 int model_channels;
 int image_width;
 int image_height;
+float image_aspect;
 
 std::unique_ptr<Interpreter> interpreter;
 
@@ -149,15 +150,20 @@ void sendOSCLandmarks(Point* locations, float *confidence)
     // also would be good to support MultiPose here
     for(i=0;i< 17;i++)
     {
-        // skip point if confidence is too low
+        // skip point if confidence is too low; just my guess on threshold
         if (confidence[i] < -1.0) continue;
 
-        printf("/location %d xyz: %d %d %f", i, locations[i].x, locations[i].y, confidence[i]);
-        // Pnt or Loc?
+        // munge the locations to floats to match TouchDesigner expectations
+        float x = float(locations[i].x)/float(image_width);
+        float y = float(locations[i].y)/float(image_height);
+        y = (1-y)/image_aspect;
+
+        printf("/location %d xyz: %d=%f %d=%f %f", i, locations[i].x,x,locations[i].y,y, confidence[i]);
+        // an alternative OSC pose message set using bundle paths
         //sprintf(udp_buffer,"/pose/0/keypoints/%d/x %d", i, points[i].x);
         sprintf(udp_buffer,"/landmark-%d-x", i);
         osc::message msgx = osc::message(udp_buffer);
-        msgx << udp_buffer << locations[i].x;
+        msgx << udp_buffer << x;//locations[i].x;
         osc_msg_send(msgx);
 
         // send buffer
@@ -165,7 +171,7 @@ void sendOSCLandmarks(Point* locations, float *confidence)
         //sprintf(udp_buffer,"/landmark-%d-y %d", i, locations[i].y);
         sprintf(udp_buffer,"/landmark-%d-y", i);
         osc::message msgy = osc::message(udp_buffer);
-        msgy << udp_buffer << locations[i].y;
+        msgy << udp_buffer << y;//locations[i].y;
         osc_msg_send(msgy);
 
         //sprintf(udp_buffer,"/pose/0/keypoints/%d/score %0.2f", i, confidence[i]);
@@ -214,6 +220,7 @@ void detect_from_video(Mat &src)
     // snag source image size
     image_width = src.cols;
     image_height = src.rows;
+    image_aspect = float(image_height)/float(image_width);
 
 
     GetImageTFLite(interpreter->typed_tensor<float>(interpreter->inputs()[0]), src);
