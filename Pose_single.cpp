@@ -2,7 +2,7 @@
 // display local and send via UDP
 // from QEngineering build of Buster64
 // build Env = Code::Blocks TFL-OSC.cbp
-// added sendOSCFrameInfo to send w, h, etc info 
+// added sendOSCFrameInfo to send w, h, etc info
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,6 +75,8 @@ using namespace tflite;
 int model_width;
 int model_height;
 int model_channels;
+int image_width;
+int image_height;
 
 std::unique_ptr<Interpreter> interpreter;
 
@@ -113,21 +115,39 @@ int osc_msg_send(osc::message msg)
     (const struct sockaddr*)(&destinationIPaddr),
     sizeof(destinationIPaddr));
 
-  printf("| sent %d \n", (int)ret);
+  //printf("| sent %d \n", (int)ret);
 
   return ret;
 }
 
-void sendOSCLandmarks(Point* points, Point* locations, float *confidence)
+void sendOSCFrameInfo() //int width, int height, int channels)
+{
+    cout << "Frame width " << image_width << " height "<< image_height;
+    sprintf(udp_buffer,"/image-width");
+        osc::message msgW = osc::message(udp_buffer);
+        msgW << udp_buffer << image_width;
+        osc_msg_send(msgW);
+
+    sprintf(udp_buffer,"/image-height");
+        osc::message msgH = osc::message(udp_buffer);
+        msgH << udp_buffer << image_height;
+        osc_msg_send(msgH);
+
+    sprintf(udp_buffer,"/numLandmarks");
+        osc::message msgC = osc::message(udp_buffer);
+        msgC << udp_buffer << 17; //channels;
+        osc_msg_send(msgC);
+}
+
+void sendOSCLandmarks(Point* locations, float *confidence)
 {
     int i;
     // clear udp_buffer
-    // for each point, put in buffer "/point # Name Pnt[i].x Pnt[i].y Loc[i].x Loc[i].y Cnf[i]
-    //  send udp_buffer
+    // for each point, send 3 messages "/landmark-#  Loc[i].x Loc[i].y Cnf[i]
 
     // really should do some check in case there are <17 values but bah
     // also would be good to support MultiPose here
-    for(i=0;i<17;i++)
+    for(i=0;i< 17;i++)
     {
         // skip point if confidence is too low
         if (confidence[i] < -1.0) continue;
@@ -191,6 +211,11 @@ void detect_from_video(Mat &src)
     static Point Loc[17];                       //location in image
     const float confidence_threshold = -1.0;    //confidence can be negative
 
+    // snag source image size
+    image_width = src.cols;
+    image_height = src.rows;
+
+
     GetImageTFLite(interpreter->typed_tensor<float>(interpreter->inputs()[0]), src);
 
     interpreter->Invoke();      // run your model
@@ -226,7 +251,8 @@ void detect_from_video(Mat &src)
         Loc[i].x=(x*src.cols)/8 + offsetShape[j+17];
     }
 
-    sendOSCLandmarks(Pnt, Loc, Cnf);
+    sendOSCFrameInfo();
+    sendOSCLandmarks(Loc, Cnf);
 
     for(i=0;i<17;i++){
         if(Cnf[i]>confidence_threshold){
@@ -259,27 +285,9 @@ void detect_from_video(Mat &src)
         if(Cnf[12]>confidence_threshold) line(src,Loc[14],Loc[12],Scalar( 255, 255, 0 ),2);
         if(Cnf[16]>confidence_threshold) line(src,Loc[14],Loc[16],Scalar( 255, 255, 0 ),2);
     }
+    cout << "\n";
 }
 
-void sendOSCFrameInfo(int width, int height, int channels)
-{
-    sprintf(udp_buffer,"/image-width");
-        osc::message msgW = osc::message(udp_buffer);
-        msgW << udp_buffer << width;
-        osc_msg_send(msgW);
-
-    sprintf(udp_buffer,"/image-height");
-        osc::message msgH = osc::message(udp_buffer);
-        msgH << udp_buffer << height;
-        osc_msg_send(msgH);
-
-    sprintf(udp_buffer,"/numChannels");
-        osc::message msgC = osc::message(udp_buffer);
-        msgC << udp_buffer << channels;
-        osc_msg_send(msgC);
-
-
-}
 //-----------------------------------------------------------------------------------------------------------------------
 int main(int argc,char ** argv)
 {
@@ -325,8 +333,6 @@ int main(int argc,char ** argv)
     cout << "width    : "<< model_width << endl;
     cout << "channels : "<< model_channels << endl;
 
-    sendOSCFrameInfo(model_width, model_height, model_channels);
-
     //VideoCapture cap("Dance.mp4");
     VideoCapture cap(0);
     if (!cap.isOpened()) {
@@ -344,8 +350,6 @@ int main(int argc,char ** argv)
         }
 
         //frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE);
-        sendOSCFrameInfo(model_width, model_height, model_channels);
-
         // most of the magic happens in this function
         detect_from_video(frame);
 

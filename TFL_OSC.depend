@@ -902,3 +902,26 @@
 	<cmath>
 	<osc++.hpp>
 
+1670288511 source:/home/pi/Pose2Art/TFL_PoseToOSC/Pose_single.cpp
+	<stdio.h>
+	<stdlib.h>
+	<unistd.h>
+	<string.h>
+	<signal.h>
+	<sys/types.h>
+	<sys/socket.h>
+	<arpa/inet.h>
+	<netinet/in.h>
+	<opencv2/opencv.hpp>
+	<opencv2/dnn.hpp>
+	<opencv2/highgui.hpp>
+	<iostream>
+	<opencv2/core/ocl.hpp>
+	"tensorflow/lite/builtin_op_data.h"
+	"tensorflow/lite/interpreter.h"
+	"tensorflow/lite/kernels/register.h"
+	"tensorflow/lite/string_util.h"
+	"tensorflow/lite/model.h"
+	<cmath>
+	<osc++.hpp>
+
